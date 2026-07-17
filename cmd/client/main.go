@@ -55,6 +55,20 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
+	err = pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+username,
+		routing.ArmyMovesPrefix+".*",
+		pubsub.SimpleQueueType{Durable: false, Transient: true},
+		handlerMove(gamestate),
+	)
+
+	channel, err := connection.Channel()
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
 	for {
 		commands := gamelogic.GetInput()
 		if len(commands) == 0 {
@@ -66,9 +80,17 @@ func main() {
 			}
 			continue
 		} else if commands[0] == "move" {
-			_, err := gamestate.CommandMove(commands)
+			armyMove, err := gamestate.CommandMove(commands)
 			if err != nil {
 				fmt.Println("Error: ", err)
+			} else {
+				err = pubsub.PublishJSON(
+					channel,
+					routing.ExchangePerilTopic,
+					routing.ArmyMovesPrefix+"."+username,
+					armyMove,
+				)
+				fmt.Println("Move was published sucessfully!")
 			}
 			continue
 		} else if commands[0] == "status" {
