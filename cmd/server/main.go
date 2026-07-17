@@ -29,13 +29,6 @@ func main() {
 		log.Fatal("Error: ", err)
 	}
 
-	/*
-		signalChan := make(chan os.Signal, 1)
-		signal.Notify(signalChan, os.Interrupt)
-		s := <-signalChan
-		fmt.Println("Got signal:", s, "shutting down program")
-	*/
-
 	for {
 		words := gamelogic.GetInput()
 		if len(words) == 0 {
