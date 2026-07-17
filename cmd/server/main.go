@@ -29,6 +29,18 @@ func main() {
 		log.Fatal("Error: ", err)
 	}
 
+	routingKey := fmt.Sprintf("%s.*", routing.GameLogSlug)
+	_, _, err = pubsub.DeclareAndBind(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routingKey,
+		pubsub.SimpleQueueType{Durable: true, Transient: false},
+	)
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
 	for {
 		words := gamelogic.GetInput()
 		if len(words) == 0 {

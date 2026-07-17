@@ -26,19 +26,34 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
+	gamestate := gamelogic.NewGameState(username)
+
 	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
-	_, _, err = pubsub.DeclareAndBind(
+
+	/*
+		_, _, err = pubsub.DeclareAndBind(
+			connection,
+			routing.ExchangePerilDirect,
+			queueName,
+			routing.PauseKey,
+			pubsub.SimpleQueueType{Durable: false, Transient: true},
+		)
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+	*/
+
+	err = pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilDirect,
 		queueName,
 		routing.PauseKey,
 		pubsub.SimpleQueueType{Durable: false, Transient: true},
+		handlerPause(gamestate),
 	)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
-
-	gamestate := gamelogic.NewGameState(username)
 
 	for {
 		commands := gamelogic.GetInput()
