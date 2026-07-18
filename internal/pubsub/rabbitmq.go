@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -53,7 +54,9 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	queue, err := channel.QueueDeclare(queuename, queueType.Durable, queueType.Transient, queueType.Transient, false, nil)
+	args := amqp.Table{"x-dead-letter-exchange": routing.ExchangeDeadLetter}
+
+	queue, err := channel.QueueDeclare(queuename, queueType.Durable, queueType.Transient, queueType.Transient, false, args)
 	if err != nil {
 		return nil, amqp.Queue{}, err
 	}
@@ -109,7 +112,7 @@ func SubscribeJSON[T any](
 				if e := msg.Nack(false, false); e != nil {
 					fmt.Println("Error :", e)
 				}
-				fmt.Println("NackDiscard Occurred")
+				fmt.Println("NackDiscard Occurred!")
 			default:
 				fmt.Println("Invalid AckType!")
 			}
