@@ -29,13 +29,13 @@ func main() {
 		log.Fatal("Error: ", err)
 	}
 
-	routingKey := fmt.Sprintf("%s.*", routing.GameLogSlug)
-	_, _, err = pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		connection,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
-		routingKey,
+		routing.GameLogSlug+".",
 		pubsub.SimpleQueueType{Durable: true, Transient: false},
+		handlerGameLogs(),
 	)
 	if err != nil {
 		log.Fatal("Error: ", err)

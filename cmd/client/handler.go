@@ -62,14 +62,14 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 			fallthrough
 		case gamelogic.WarOutcomeYouWon:
 			logMessage = fmt.Sprintf("%s won a war against %s", winner, loser)
-			err := PublishGameLog(gs, ch, logMessage)
+			err := publishGameLog(gs, ch, logMessage)
 			if err != nil {
 				return pubsub.NackRequeue
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
 			logMessage = fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser)
-			err := PublishGameLog(gs, ch, logMessage)
+			err := publishGameLog(gs, ch, logMessage)
 			if err != nil {
 				return pubsub.NackRequeue
 			}
@@ -81,7 +81,7 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 	}
 }
 
-func PublishGameLog(gs *gamelogic.GameState, ch *amqp.Channel, logMsg string) error {
+func publishGameLog(gs *gamelogic.GameState, ch *amqp.Channel, logMsg string) error {
 	err := pubsub.PublishGob(
 		ch,
 		routing.ExchangePerilTopic,
@@ -89,6 +89,7 @@ func PublishGameLog(gs *gamelogic.GameState, ch *amqp.Channel, logMsg string) er
 		routing.GameLog{
 			CurrentTime: time.Now(),
 			Message:     logMsg,
+			Username:    gs.Player.Username,
 		},
 	)
 	if err != nil {

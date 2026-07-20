@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 
@@ -75,25 +77,82 @@ func SubscribeJSON[T any](
 				fmt.Println("Error: ", err)
 			} else {
 				ackType = handler(message)
+				switch ackType {
+				case Ack:
+					if e := msg.Ack(false); e != nil {
+						fmt.Println("Error: ", e)
+					}
+					fmt.Println("Ack occurred!")
+				case NackRequeue:
+					if e := msg.Nack(false, true); e != nil {
+						fmt.Println("Error: ", e)
+					}
+					fmt.Println("NackRequeue occurred!")
+				case NackDiscard:
+					if e := msg.Nack(false, false); e != nil {
+						fmt.Println("Error :", e)
+					}
+					fmt.Println("NackDiscard Occurred!")
+
+				}
 			}
-			switch ackType {
-			case Ack:
-				if e := msg.Ack(false); e != nil {
-					fmt.Println("Error: ", e)
+
+		}
+
+	}()
+
+	return nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queuename,
+	key string,
+	queueType SimpleQueueType,
+	handler func(T) AckType,
+) error {
+	channel, _, err := DeclareAndBind(conn, exchange, queuename, key, queueType)
+	if err != nil {
+		return err
+	}
+
+	deliveryChan, err := channel.Consume(queuename, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		var ackType AckType
+		for msg := range deliveryChan {
+			var message T
+
+			var b bytes.Buffer
+			b.Write(msg.Body)
+			dec := gob.NewDecoder(&b)
+			err := dec.Decode(&message)
+			if err != nil {
+				fmt.Println("Error: ", err)
+			} else {
+				ackType = handler(message)
+				switch ackType {
+				case Ack:
+					if e := msg.Ack(false); e != nil {
+						fmt.Println("Error: ", e)
+					}
+					fmt.Println("Ack occurred!")
+				case NackRequeue:
+					if e := msg.Nack(false, true); e != nil {
+						fmt.Println("Error: ", e)
+					}
+					fmt.Println("NackRequeue occurred!")
+				case NackDiscard:
+					if e := msg.Nack(false, false); e != nil {
+						fmt.Println("Error :", e)
+					}
+					fmt.Println("NackDiscard Occurred!")
+
 				}
-				fmt.Println("Ack occurred!")
-			case NackRequeue:
-				if e := msg.Nack(false, true); e != nil {
-					fmt.Println("Error: ", e)
-				}
-				fmt.Println("NackRequeue occurred!")
-			case NackDiscard:
-				if e := msg.Nack(false, false); e != nil {
-					fmt.Println("Error :", e)
-				}
-				fmt.Println("NackDiscard Occurred!")
-			default:
-				fmt.Println("Invalid AckType!")
 			}
 
 		}
