@@ -21,14 +21,17 @@ func main() {
 	defer connection.Close()
 	fmt.Println("The connection was successful...")
 
+	channel, err := connection.Channel()
+	if err != nil {
+		log.Fatal("Error: ", err)
+	}
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
 
 	gamestate := gamelogic.NewGameState(username)
-
-	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
 
 	/*
 		_, _, err = pubsub.DeclareAndBind(
@@ -46,7 +49,7 @@ func main() {
 	err = pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilDirect,
-		queueName,
+		routing.PauseKey+"."+username,
 		routing.PauseKey,
 		pubsub.SimpleQueueType{Durable: false, Transient: true},
 		handlerPause(gamestate),
@@ -61,13 +64,17 @@ func main() {
 		routing.ArmyMovesPrefix+"."+username,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.SimpleQueueType{Durable: false, Transient: true},
-		handlerMove(gamestate),
+		handlerMove(gamestate, channel),
 	)
 
-	channel, err := connection.Channel()
-	if err != nil {
-		log.Fatal("Error: ", err)
-	}
+	err = pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
+		"war",
+		routing.WarRecognitionsPrefix+".*",
+		pubsub.SimpleQueueType{Durable: true, Transient: false},
+		handlerWar(gamestate, channel),
+	)
 
 	for {
 		commands := gamelogic.GetInput()
